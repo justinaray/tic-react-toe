@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tic-React-Toe</title>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        border: 0;
+        width: 100%;
+        text-align: center;
+      }
+
+      .game-board {
+        display: inline-block;
+      }
+
+      .game-square {
+        width: 200px;
+        height: 200px;
+        border: 1px solid black;
+        float: left;
+        font-size: 180px;
+        line-height: 180px;
+        text-align: center;
+      }
+      .clearfix {
+        clear: both;
+      }
+
+      .status {
+        margin-top: 3em;
+      }
+
+      .status .status-text {
+        display: inline-block;
+      }
+
+      .status .new-game {
+        margin-left: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      React-provided Playground Disclaimer:
+
+      Note: this page is a great way to try React but it's not suitable for production.
+      It slowly compiles JSX with Babel in the browser and uses a large development build of React.
+
+      To set up a production-ready React build environment, follow these instructions:
+      * https://reactjs.org/docs/add-react-to-a-new-app.html
+      * https://reactjs.org/docs/add-react-to-an-existing-app.html
+    -->
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+      /*
+       * TODO
+       * Responsive Layout and better styling
+       * Custom tokens, colors,
+       * Match mode
+       * 1player/mini-max
+       * Add a keyboard listener for 2nd player
+       */
+
+      class Square extends React.Component {
+        constructor(props) {
+          super(...props);
+
+          this.handleClick = this.handleClick.bind(this);
+        }
+
+        handleClick() {
+          if (!this.props.controllingPlayer) {
+            this.props.obtainControl();
+          }
+        }
+
+        render() {
+          let controllingPlayer = 0;
+          if (typeof this.props.controllingPlayer === 'number' && this.props.controllingPlayer > 0) {
+            controllingPlayer = this.props.controllingPlayer;
+          }
+
+          let controllingPlayerClassName = '';
+          if (controllingPlayer) {
+            controllingPlayerClassName = `controlling-player-${controllingPlayer}`;
+          }
+
+          let controllingPlayerToken = '';
+          switch (controllingPlayer) {
+            case 1:
+              controllingPlayerToken = 'X';
+              break;
+            case 2: 
+              controllingPlayerToken = 'O';
+              break;
+            default:
+              controllingPlayerToken = '';
+              break;
+          }
+
+          return (
+            <div className={`game-square ${controllingPlayerClassName}`}
+              onClick={this.handleClick}>
+              {controllingPlayerToken}
+            </div>
+          );
+        }
+      }
+
+      class GameStatusText extends React.Component {
+        constructor(props) {
+          super(...props);
+        }
+
+        render() {
+          let gameStatus = this.props.gameStatus;
+
+          let statusText = '';
+          if (gameStatus.winningPlayer) {
+            statusText = `Player ${gameStatus.winningPlayer} Wins!`;
+          } else if (gameStatus.availableMoves === 0) {
+            statusText = 'Cat takes the game';
+          } else {
+            statusText = `Your turn Player ${gameStatus.activePlayer}`;
+          }
+
+          return <div className={this.props.className}>{statusText}</div>
+        }
+      }
+
+      class Game extends React.Component {
+        constructor(props) {
+          super(...props);
+
+          let controllingPlayer = null;
+          if (props.controllingPlayer && props.controllingPlayer > 0) {
+            controllingPlayer = props.controllingPlayer;
+          }
+
+          this.state = this.getNewGameState();
+
+          this.obtainSquareControl = this.obtainSquareControl.bind(this);
+          this.handleNewGameClick = this.handleNewGameClick.bind(this);
+        }
+
+        render() {
+          let squares = this.state.squares;
+          let obtainSquareControl = this.obtainSquareControl;
+
+          let rows = squares.map((currRow, rowIndex) => {
+              let rowSquares = []; 
+
+              currRow.forEach((currColumn, colIndex) => {
+                  rowSquares.push(
+                    <Square key={`square-${rowIndex}-${colIndex}`}
+                      controllingPlayer={squares[rowIndex][colIndex]}
+                      obtainControl={obtainSquareControl.bind(this, rowIndex, colIndex)} />
+                  );
+              });
+
+              return rowSquares;
+          })
+
+          return (
+            <div>
+              <div className="game-board">
+                {rows[0]}
+                <div className="clearfix" />
+                {rows[1]}
+                <div className="clearfix" />
+                {rows[2]}
+                <div className="clearfix" />
+              </div>
+              <div className="status">
+                <GameStatusText className="status-text"
+                  gameStatus={this.state}></GameStatusText>
+                <button className="new-game" onClick={this.handleNewGameClick}>New Game</button>
+              </div>
+            </div>
+          );
+        }
+
+        getNewGameState() {
+          return {
+            activePlayer: 1,
+            squares: [
+              [0, 0, 0],
+              [0, 0, 0],
+              [0, 0, 0]
+            ],
+            availableMoves: 9,
+            winningPlayer: 0 
+          };
+        }
+
+        handleNewGameClick() {
+          this.setState(this.getNewGameState());
+        }
+
+        obtainSquareControl(squareRowIndex, squareColIndex) {
+          this.setState((prevState, props) => {
+            if (prevState.winningPlayer || prevState.availableMoves <= 0 || prevState.squares[squareRowIndex][squareColIndex] > 0) {
+              return;
+            }
+
+            let activePlayer = prevState.activePlayer;
+            let currSquares = prevState.squares;
+
+            currSquares[squareRowIndex][squareColIndex] = prevState.activePlayer;
+
+            let nextPlayer = activePlayer + 1;
+            if (nextPlayer > 2) {
+              nextPlayer = 1;
+            }
+
+            return {
+              activePlayer: nextPlayer,
+              squares: currSquares,
+              availableMoves: prevState.availableMoves - 1,
+              winningPlayer: this.calculateWinner(currSquares)
+            };
+          });
+        }
+
+        calculateWinner(squares) {
+          let winner = 0;
+
+          squares.forEach(currRow => {
+            let rowWinner = Math.max(currRow[0], 0);
+
+            if (rowWinner && rowWinner === currRow[1] && rowWinner === currRow[2]) {
+              winner = rowWinner;
+            }
+          });
+
+          if (!winner) {
+            for (let colIndex = 0; colIndex < 3; colIndex++) {
+              let colWinner = Math.max(squares[0][colIndex], 0);
+
+              if (colWinner && colWinner === squares[1][colIndex] && colWinner === squares[2][colIndex]) {
+                winner = colWinner;
+              }
+            }
+          }
+
+          if (!winner) {
+            let diagonalWinner = Math.max(squares[0][0], 0);
+
+            if (diagonalWinner && diagonalWinner === squares[1][1] && diagonalWinner === squares[2][2]) {
+              winner = diagonalWinner;
+            }
+          }
+
+          if (!winner) {
+            let diagonalWinner = Math.max(squares[2][0], 0);
+
+            if (diagonalWinner && diagonalWinner === squares[1][1] && diagonalWinner === squares[0][2]) {
+              winner = diagonalWinner;
+            }
+          }
+
+          return winner;
+        }
+      }
+
+      ReactDOM.render(
+        <div>
+          <h1>Tic-React-Toe</h1>
+          <Game />
+        </div>,
+        document.getElementById('root')
+      );
+    </script>
+  </body>
+</html>
